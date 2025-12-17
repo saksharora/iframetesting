@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iframe Accessibility Test - WCAG 2.1 AA</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #333;
+    }
+    .test-section {
+      margin: 30px 0;
+      padding: 20px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+    }
+    iframe {
+      border: 2px solid #4CAF50;
+      margin: 10px 0;
+      display: block;
+    }
+    .low-contrast {
+      color: #ccc;
+      background: #fff;
+    }
+  </style>
+</head>
+<body>
+  <h1>Iframe Accessibility Test Page - WCAG 2.1 AA</h1>
+  <p>This page tests iframe scanning functionality with various accessibility issues.</p>
+
+  <!-- Main Page Issues -->
+  <div class="test-section">
+    <h2>Main Page Issues (should have isIframe: false)</h2>
+    
+    <!-- Image without alt -->
+    <img src="https://via.placeholder.com/150" />
+    
+    <!-- Button without accessible name -->
+    <button></button>
+    
+    <!-- Input without label -->
+    <input type="text" placeholder="Enter name" />
+    
+    <!-- Low contrast text -->
+    <p class="low-contrast">This text has low contrast</p>
+    
+    <!-- Link with aria-hidden but focusable -->
+    <a href="#" aria-hidden="true">Hidden but focusable link</a>
+  </div>
+
+  <!-- Iframe 1: srcdoc iframe with issues -->
+  <div class="test-section">
+    <h2>Iframe 1: srcdoc iframe (should have isIframe: true)</h2>
+    <iframe
+      title="Test Iframe 1"
+      width="600"
+      height="300"
+      srcdoc='
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <title>Iframe Content 1</title>
+          <style>
+            body { padding: 20px; font-family: Arial, sans-serif; }
+            .low-contrast { color: #aaa; background: #fff; }
+          </style>
+        </head>
+        <body>
+          <h2>Iframe 1 Content</h2>
+          
+          <!-- Image without alt -->
+          <img src="https://via.placeholder.com/100">
+          
+          <!-- Button without accessible name -->
+          <button></button>
+          
+          <!-- Input without label -->
+          <input type="text" placeholder="Name">
+          
+          <!-- Focusable element hidden from screen readers -->
+          <a href="#" aria-hidden="true">Hidden Link</a>
+          
+          <!-- Low contrast text -->
+          <p class="low-contrast">Low contrast text in iframe</p>
+          
+          <!-- Missing form label -->
+          <form>
+            <input type="email" name="email">
+            <button type="submit">Submit</button>
+          </form>
+        </body>
+        </html>
+      '>
+    </iframe>
+  </div>
+
+  <!-- Iframe 2: Another srcdoc iframe with different issues -->
+  <div class="test-section">
+    <h2>Iframe 2: Another srcdoc iframe (should have isIframe: true)</h2>
+    <iframe
+      title="Test Iframe 2"
+      width="600"
+      height="250"
+      srcdoc='
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <title>Iframe Content 2</title>
+        </head>
+        <body>
+          <h3>Iframe 2 Content</h3>
+          
+          <!-- Missing heading hierarchy -->
+          <h5>This heading skips levels (h3 to h5)</h5>
+          
+          <!-- Image without alt -->
+          <img src="https://via.placeholder.com/80">
+          
+          <!-- Empty button -->
+          <button aria-label=""></button>
+          
+          <!-- Table without headers -->
+          <table>
+            <tr>
+              <td>Cell 1</td>
+              <td>Cell 2</td>
+            </tr>
+          </table>
+        </body>
+        </html>
+      '>
+    </iframe>
+  </div>
+
+  <!-- Main page form issues -->
+  <div class="test-section">
+    <h2>More Main Page Issues</h2>
+    
+    <!-- Form without labels -->
+    <form>
+      <input type="text" name="username">
+      <input type="password" name="password">
+      <button type="submit">Login</button>
+    </form>
+    
+    <!-- Empty heading -->
+    <h3></h3>
+    
+    <!-- Missing lang attribute on html (but this is the main page, so should be captured) -->
+  </div>
+
+  <script>
+    // Helper function to test the extension
+    window.testExtension = async function() {
+      console.log('=== Testing Accessibility Extension ===');
+      
+      // Test SET_CONFIG
+      console.log('1. Sending SET_CONFIG...');
+      const setConfigEvent = new CustomEvent('accessibility-extension-custom-event', {
+        detail: {
+          message: 'SET_CONFIG',
+          wcagCriteria: 'wcag21aa',
+          bestPractice: false,
+          captureScreenshot: true,
+          needsReview: false,
+          scanIframes: true, // Enable iframe scanning (default: true)
+        }
+      });
+      document.dispatchEvent(setConfigEvent);
+      
+      // Wait a bit for scans to complete
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      // Test GET_LATEST_SCAN_DATA
+      console.log('2. Getting scan results...');
+      return new Promise((resolve) => {
+        document.addEventListener('automation-custom-event', function handler(e) {
+          if (e.detail.message === 'GET_LATEST_SCAN_DATA') {
+            document.removeEventListener('automation-custom-event', handler);
+            console.log('3. Scan results received:', e.detail);
+            
+            // Analyze results
+            const data = e.detail.data || [];
+            if (data.length > 0) {
+              const report = data[0];
+              const issues = report.events?.[0]?.issues || [];
+              
+              console.log('\n=== Analysis ===');
+              console.log(`Total issues: ${issues.length}`);
+              
+              const mainPageIssues = issues.filter(i => !i.isIframe);
+              const iframeIssues = issues.filter(i => i.isIframe);
+              
+              console.log(`Main page issues (isIframe: false): ${mainPageIssues.length}`);
+              console.log(`Iframe issues (isIframe: true): ${iframeIssues.length}`);
+              
+              if (iframeIssues.length > 0) {
+                console.log('\nIframe issues found:');
+                iframeIssues.forEach((issue, idx) => {
+                  console.log(`  ${idx + 1}. ${issue.name} (${issue.id})`);
+                  console.log(`     Target: ${issue.target}`);
+                  console.log(`     isIframe: ${issue.isIframe}`);
+                  console.log(`     URL: ${issue.url}`);
+                });
+              } else {
+                console.log('\n⚠️  No iframe issues found! Check if iframe scanning is working.');
+              }
+              
+              // Check for specific test cases
+              const imageAltIssues = issues.filter(i => i.id === 'image-alt');
+              const buttonNameIssues = issues.filter(i => i.id === 'button-name');
+              const ariaHiddenFocusIssues = issues.filter(i => i.id === 'aria-hidden-focus');
+              
+              console.log(`\nSpecific issues:`);
+              console.log(`  - image-alt: ${imageAltIssues.length} (should be > 0)`);
+              console.log(`  - button-name: ${buttonNameIssues.length} (should be > 0)`);
+              console.log(`  - aria-hidden-focus: ${ariaHiddenFocusIssues.length} (should be > 0)`);
+            }
+            
+            resolve(e.detail);
+          }
+        });
+        
+        const getScanEvent = new CustomEvent('accessibility-extension-custom-event', {
+          detail: { message: 'GET_LATEST_SCAN_DATA' }
+        });
+        document.dispatchEvent(getScanEvent);
+      });
+    };
+    
+    console.log('Test helper available. Run: await window.testExtension()');
+  </script>
+</body>
+</html>
